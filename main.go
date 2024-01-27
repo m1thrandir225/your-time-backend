@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"log"
+	"m1thrandir225/your_time/api"
+	db "m1thrandir225/your_time/db/sqlc"
 	"m1thrandir225/your_time/util"
 
 	_ "github.com/lib/pq"
@@ -21,5 +23,14 @@ func main() {
 		log.Fatal("cannot connect to db:", err)
 	}
 
+	store := db.NewStore(conn)
+
+	server := api.NewServer(store)
+
+	err = server.Start(config.ServerAddress)
+
+	if err != nil {
+		log.Fatal("cannot start server:", err)
+	}
 	
 }

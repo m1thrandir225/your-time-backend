@@ -47,6 +47,7 @@ func (maker *JWTMaker) VerifyToken(token string) (*Payload, error) {
 
 		return []byte(maker.secretKey), nil
 	}
+	
 	jwtToken, err := jwt.ParseWithClaims(token, &Payload{}, keyFunc)
 
 	if err != nil {

@@ -53,7 +53,7 @@ func TestGetUserApi(t *testing.T) {
 
 			tc.build(store)
 
-			sever := NewServer(store)
+			sever := newTestServer(t, store)
 
 			recorder := httptest.NewRecorder()
 

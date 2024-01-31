@@ -32,8 +32,13 @@ type getTaskByIDRequest struct {
 	ID string `uri:"id" binding:"required,min=1"`
 }
 
-type getTaskByUser struct {
+type getTasksByUser struct {
 	UserID string `uri:"user_id" binding:"required,min=1"`
+}
+
+type getTasksByUserResponse struct {
+	UserID string `json:"user_id"`
+	Tasks []createTaskResponse `json:"tasks"`
 }
 
 
@@ -91,4 +96,76 @@ func (server *Server) createTask(ctx *gin.Context) {
 		UserID: task.UserID.String(),
 	}
 	ctx.JSON(http.StatusOK, res);
+}
+
+func (server *Server) getTaskByID (context *gin.Context) {
+	var req getTaskByIDRequest
+
+	if err := context.ShouldBindUri(&req); err != nil {
+		context.JSON(http.StatusBadRequest, errorResponse(err));
+		return;
+	}
+
+	task, err := server.store.GetTaskByID(context, uuid.MustParse(req.ID));
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			context.JSON(http.StatusNotFound, errorResponse(err));
+			return;
+		}
+		context.JSON(http.StatusInternalServerError, errorResponse(err));
+		return;
+	}
+
+	res := createTaskResponse {
+		ID: task.ID.String(),
+		Title: task.Title,
+		Description: task.Description.String,
+		DueDate: task.DueDate.Format(time.RFC3339),
+		ReminderDate: task.ReminderDate.Time.Format(time.RFC3339),
+		UserID: task.UserID.String(),
+	}
+
+	context.JSON(http.StatusOK, res);
+}
+
+func (server *Server) getTasksByUser (context *gin.Context) {
+	var req getTasksByUser
+
+	if err := context.ShouldBindUri(&req); err != nil {
+		context.JSON(http.StatusBadRequest, errorResponse(err));
+		return;
+	}
+
+
+	tasks, err := server.store.GetTasksByUser(context, uuid.MustParse(req.UserID));
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			context.JSON(http.StatusNotFound, errorResponse(err));
+			return;
+		}
+		context.JSON(http.StatusInternalServerError, errorResponse(err));
+		return;
+	}
+
+	var res []createTaskResponse
+
+	for _, task := range tasks {
+		res = append(res, createTaskResponse {
+			ID: task.ID.String(),
+			Title: task.Title,
+			Description: task.Description.String,
+			DueDate: task.DueDate.Format(time.RFC3339),
+			ReminderDate: task.ReminderDate.Time.Format(time.RFC3339),
+			UserID: task.UserID.String(),
+		})
+	}
+
+	response := getTasksByUserResponse {
+		UserID: req.UserID,
+		Tasks: res,
+	}
+
+	context.JSON(http.StatusOK, response);
 }

@@ -44,7 +44,9 @@ func (server *Server) SetupRouter() {
 	//Login
 	router.POST("/users/login", server.loginUser)
 
+	router.GET("/tasks/:id", server.getTaskByID);
 	router.POST("/tasks", server.createTask)
+	router.GET("/tasks/user/:user_id", server.getTasksByUser)
 
 	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
 

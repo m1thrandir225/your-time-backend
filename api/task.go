@@ -13,9 +13,9 @@ import (
 
 type createTaskRequest struct {
 	Title string `json:"title" binding:"required"`
-	Description string `json:"description" binding:"required"`
+	Description *string `json:"description,omitempty"`
 	DueDate string `json:"due_date" binding:"required"`
-	ReminderDate *string `json:"reminder_date"`
+	ReminderDate *string `json:"reminder_date,omitempty"`
 	UserID string `json:"user_id" binding:"required"`
 }
 
@@ -57,7 +57,22 @@ func (server *Server) createTask(ctx *gin.Context) {
 		return;
 	}
 
-	reminderDate, err := time.Parse(time.RFC3339, *req.ReminderDate);
+	//ReminderDate is optional aka the user doesn't have to set a reminder date, so we need to check if it's nil
+
+	var reminderDate sql.NullTime;
+
+	if req.ReminderDate != nil {
+		reminderDate.Time, err = time.Parse(time.RFC3339, *req.ReminderDate);
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err));
+			return;
+		}
+		reminderDate.Valid = true;
+	} else {
+		reminderDate.Time = dueDate;
+		reminderDate.Valid = true;
+	}
+
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err));
@@ -71,12 +86,22 @@ func (server *Server) createTask(ctx *gin.Context) {
 		return;
 	}
 
+	//Description is optional, so we need to check if it's nil
+
+	var description sql.NullString;	
+
+	if req.Description != nil {
+		description.String = *req.Description;
+		description.Valid = true;
+	} else {
+		description.Valid = false;
+	}
 
 	arg := db.CreateTaskParams {
 		Title: req.Title,
-		Description: sql.NullString{String: req.Description, Valid: true},
+		Description: description,
 		DueDate: dueDate,
-		ReminderDate: sql.NullTime{Time: reminderDate, Valid: true},
+		ReminderDate: reminderDate,
 		UserID: userUUID,
 	}
 
@@ -91,10 +116,11 @@ func (server *Server) createTask(ctx *gin.Context) {
 		ID: task.ID.String(),
 		Title: task.Title,
 		Description: task.Description.String,
-		DueDate: task.DueDate.Format(time.RFC3339),
-		ReminderDate: task.ReminderDate.Time.Format(time.RFC3339),
+		DueDate: task.DueDate.String(),
+		ReminderDate: task.ReminderDate.Time.String(),
 		UserID: task.UserID.String(),
 	}
+
 	ctx.JSON(http.StatusOK, res);
 }
 

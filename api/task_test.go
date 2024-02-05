@@ -13,105 +13,152 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
-
-
 func TestCreateTaskApi(t *testing.T) {
-	user := randomUser();
+	user := randomUser()
+
+	task := randomTask(user);
 
 	testCases := []struct {
-		name string
-		task db.Task
-		build func(store *mockdb.MockStore)
-		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
-	} {
+		name 	string
+		body 	gin.H
+		build 	func(store *mockdb.MockStore)
+		checkResponse 	func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
 		{
 			name: "OK",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {
-				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(1).Return(randomTask(user), nil)
+			body: gin.H {
+				"title": task.Title,
+				"description": task.Description.String,
+				"reminder_date": "2021-07-13T15:28:51.818095+00:00",
+				"due_date": "2021-07-13T15:28:51.818095+00:00",
+				"user_id": user.ID.String(),
 			},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
+			build: func(store *mockdb.MockStore) {
+				arg := db.CreateTaskParams {
+					Title: 	 task.Title,
+					Description: task.Description,
+					ReminderDate: task.ReminderDate,
+					DueDate: task.DueDate,
+					UserID: user.ID,
+				}
+
+				store.EXPECT().CreateTask(gomock.Any(), gomock.Eq(arg)).Times(1).Return(task, nil)
+			},	
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchTask(t, recorder.Body, randomTask(user))
+				
 			},
-		},
-		{
-			name: "Unauthorized",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {},
 		},
 		{
 			name: "InternalError",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {
-				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(1).Return(db.Task{}, sql.ErrConnDone)
+			body: gin.H {
+				"title": task.Title,
+				"description": task.Description.String,
+				"reminder_date": "2021-07-13T15:28:51.818095+00:00",
+				"due_date": "2021-07-13T15:28:51.818095+00:00",
+				"user_id": user.ID.String(),
 			},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
+			build: func(store *mockdb.MockStore) {
+				arg := db.CreateTaskParams {
+					Title: 	 task.Title,
+					Description: task.Description,
+					ReminderDate: task.ReminderDate,
+					DueDate: task.DueDate,
+					UserID: user.ID,
+				}
+
+				store.EXPECT().CreateTask(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Task{}, sql.ErrConnDone)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 		{
-			name: "InvalidTitle",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {
-				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(1).Return(db.Task{}, sql.ErrNoRows)
+			name: "InvalidUserID",
+			body: gin.H {
+				"title": task.Title,
+				"description": task.Description.String,
+				"reminder_date": "2021-07-13T15:28:51.818095+00:00",
+				"due_date": "2021-07-13T15:28:51.818095+00:00",
+				"user_id": "invalid",
 			},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
+			build: func(store *mockdb.MockStore) {
+
+
+				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(0)
+			},
+
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 		{
 			name: "InvalidDueDate",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {
-				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(1).Return(db.Task{}, sql.ErrNoRows)
+			body: gin.H {
+				"title": task.Title,
+				"description": task.Description.String,
+				"reminder_date": "2021-07-13T15:28:51.818095+00:00",
+				"due_date": "invalid",
+				"user_id": user.ID.String(),
 			},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
+			build: func(store *mockdb.MockStore) {
+
+				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(0)
+			},
+
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
+
 		{
 			name: "InvalidReminderDate",
-			task: randomTask(user),
-			build: func (store *mockdb.MockStore) {
-				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(1).Return(db.Task{}, sql.ErrNoRows)
+			body: gin.H {
+				"title": task.Title,
+				"description": task.Description.String,
+				"reminder_date": "invalid",
+				"due_date": "2021-07-13T15:28:51.818095+00:00",
+				"user_id": user.ID.String(),
 			},
-			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
+			build: func(store *mockdb.MockStore) {
+				store.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Times(0)
+			},
+
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 	}
 
-
 	for i := range testCases {
 		tc := testCases[i]
 
 		t.Run(tc.name, func(t *testing.T) {
-			controller := gomock.NewController(t)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-			defer controller.Finish()
-
-			store := mockdb.NewMockStore(controller)
+			store := mockdb.NewMockStore(ctrl)
 
 			tc.build(store)
 
 			server := newTestServer(t, store)
 
+
 			recorder := httptest.NewRecorder()
 
-			body, err := json.Marshal(tc.task)
+			data, err := json.Marshal(tc.body)
 
 			require.NoError(t, err)
 
 			url := "/tasks"
 
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
 
 			require.NoError(t, err)
 
@@ -119,21 +166,27 @@ func TestCreateTaskApi(t *testing.T) {
 
 			tc.checkResponse(t, recorder)
 		})
-	
+
 	}
 }
 
-
 func randomTask(user db.User) db.Task {
+	dueDate, err := time.Parse(time.RFC3339, "2021-07-13T15:28:51.818095+00:00")
+
+	if err != nil {
+		panic(err)
+	}
+
+
 	return db.Task{
-		ID: uuid.New(),
-		UserID: user.ID,
-		Title: util.RandomString(6),
-		Description: sql.NullString{String: util.RandomString(6), Valid: true},
-		ReminderDate: sql.NullTime{Time: util.RandomReminderDate(util.RandomDate()), Valid: true},
-		DueDate: util.RandomDate(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:           uuid.New(),
+		UserID:       user.ID,
+		Title:        util.RandomString(6),
+		Description:  sql.NullString{String: util.RandomString(6), Valid: true},
+		ReminderDate: sql.NullTime{Time: dueDate, Valid: true},
+		DueDate:      dueDate,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 }
 

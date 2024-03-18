@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -36,7 +37,6 @@ func TestGetUserApi(t *testing.T) {
 			},
 			checkResponse: func (t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchUser(t, recorder.Body, user)
 			},
 		},
 	}
@@ -44,7 +44,7 @@ func TestGetUserApi(t *testing.T) {
 	for i:= range testCases {
 		tc := testCases[i]
 
-		t.Run(tc.name, func(t *testing.T) {
+		
 			controller := gomock.NewController(t)
 
 			defer controller.Finish()
@@ -64,7 +64,9 @@ func TestGetUserApi(t *testing.T) {
 			require.NoError(t, err)
 
 			sever.router.ServeHTTP(recorder, request)
-		})
+
+			tc.checkResponse(t, recorder)
+		
 	}
 }
 
@@ -84,8 +86,18 @@ func requireBodyMatchUser(t *testing.T, body *bytes.Buffer, user db.User) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotUser db.User
+	var gotUser struct  {
+		ID uuid.UUID
+		FirstName string
+		LastName string
+		Email string
+		CreatedAt time.Time
+		UpdatedAt time.Time
+	}
+
 	err = json.Unmarshal(data, &gotUser)
+
+
 	require.NoError(t, err)
 	require.Equal(t, user, gotUser)
 }

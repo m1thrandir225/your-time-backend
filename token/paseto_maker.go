@@ -2,14 +2,13 @@ package token
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/aead/chacha20poly1305"
 	"github.com/o1egl/paseto"
+	"time"
 )
 
 type PasetoMaker struct {
-	paseto *paseto.V2
+	paseto       *paseto.V2
 	symmetricKey []byte
 }
 
@@ -21,26 +20,26 @@ func NewPasetoMaker(symmetricKey string) (Maker, error) {
 	paseto := paseto.NewV2()
 
 	maker := &PasetoMaker{
-		paseto: paseto,
+		paseto:       paseto,
 		symmetricKey: []byte(symmetricKey),
 	}
 
 	return maker, nil
 }
 
- func (maker *PasetoMaker) CreateToken(email string, duration time.Duration) (string, error) {
- 	payload, err := NewPayload(email, duration)
+func (maker *PasetoMaker) CreateToken(email string, duration time.Duration) (string, error) {
+	payload, err := NewPayload(email, duration)
 
- 	if err != nil {
- 		return "", err
- 	}
+	if err != nil {
+		return "", err
+	}
 
- 	return maker.paseto.Encrypt(maker.symmetricKey, payload, nil)
- }
+	return maker.paseto.Encrypt(maker.symmetricKey, payload, nil)
+}
 
- func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
+func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 	payload := &Payload{}
-	
+
 	err := maker.paseto.Decrypt(token, maker.symmetricKey, payload, nil)
 
 	if err != nil {
@@ -52,4 +51,5 @@ func NewPasetoMaker(symmetricKey string) (Maker, error) {
 	}
 
 	return payload, nil
- }
+}
+
